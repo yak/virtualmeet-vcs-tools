@@ -30,8 +30,6 @@
 
 
 PSQL="/usr/bin/psql"
-# DB_USER="virtualmeet"
-# DB="virtualmeet"
 SQL_REVISION_PATH="./sql"
 
 # ---------- YOU SHOULD NOT NEED TO EDIT BELOW THIS LINE --------------
