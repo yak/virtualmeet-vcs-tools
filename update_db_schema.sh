@@ -93,42 +93,41 @@ fi
 set `$PSQL -U $DB_USER -l | grep -v FATAL | grep $DB` 
 if [ -z "$1" ]; then
 	clear  # hide the mess psql spits out in this scenario
-	echo "${ERR_PREF}Could not connect to db $DB with user $DB_USER using $PSQL. Is your database properly configured and running?";
+	echo -e "${ERR_PREF}Could not connect to db $DB with user $DB_USER using $PSQL. Is your database properly configured and running?";
 	exit 9;
 fi
 
-# try to fetch the current schema version from the target db
-set `$PSQL -t -U $DB_USER $DB -c 'SELECT revision FROM schema_revision ORDER BY revision DESC limit 1;'` 
+# try to fetch the current schema version from the target db (note, -- is required to escape the -c ticks correctly)
+set -- `$PSQL -t -U $DB_USER $DB -c 'SELECT revision FROM schema_revision ORDER BY revision DESC limit 1;'` 
 current_revision=$1;
 
 if [ -z "$current_revision" ]; then
-	echo "${ERR_PREF}No revision number found in the $DB database. You probably need to import the latest baseline.";
+	echo -e "${ERR_PREF}No revision number found in the $DB database. You probably need to import the latest baseline.";
 	exit 9;
 fi
 
 current_revision=`echo $current_revision | grep -v [^0-9]`
 if [ -z "$current_revision" ]; then
-	echo "${ERR_PREF}Non-numeric revision number found in the $DB database. Something is very wrong here.";
+	echo -e "${ERR_PREF}Non-numeric revision number found in the $DB database. Something is very wrong here.";
 	exit 9;
 fi
 
 if [ ! -e $SQL_REVISION_PATH ]; then
-	echo "${ERR_PREF}The SQL revision path $SQL_REVISION_PATH does not exist.";
+	echo -e "${ERR_PREF}The SQL revision path $SQL_REVISION_PATH does not exist.";
 	exit 9;
 fi
 
 if [ $(ls -1A $SQL_REVISION_PATH | wc -l) -eq 0 ]; then
-	echo "${ERR_PREF}The SQL revision path $SQL_REVISION_PATH is empty. Have you correctly checked out the project?";
+	echo -e "${ERR_PREF}The SQL revision path $SQL_REVISION_PATH is empty. Have you correctly checked out the project?";
 	exit 9;
 fi
 
 if [ "$TO_REVISION" ] && [ "$TO_REVISION" -le "$current_revision" ]; then
-	echo "\nNothing to do. Asked to go no further than revision $TO_REVISION, currently at revision $current_revision.\n"
+	echo -e "\nNothing to do. Asked to go no further than revision $TO_REVISION, currently at revision $current_revision.\n"
 	exit
 fi
 
 # --- EVERYTHING SEEMS OK, LET'S ROCK! ---
-
 psql_verbose=''
 if [ "$VERBOSE" ]; then
 	psql_verbose='--echo-queries'
@@ -143,7 +142,7 @@ do
 	fi	
 
 	if [ "$LISTONLY" ]; then
-		echo "\n...would apply revision $next_revision"
+		echo -e "\n...would apply revision $next_revision"
 		if [ "$VERBOSE" ]; then
 			cat ${SQL_REVISION_PATH}/${next_revision}_rev.sql
 		fi;
@@ -151,7 +150,7 @@ do
 		echo "...applying revision $next_revision"
 		$PSQL --single-transaction $psql_verbose -v ON_ERROR_STOP=1 -U $DB_USER $DB < ${SQL_REVISION_PATH}/${next_revision}_rev.sql
 		if [ "$?" -ne "0" ]; then
-			echo "${ERR_PREF}The revision failed, aborting. The revision is automatically wrapped in a transaction when ran, but explicit use of transaction blocks within the revision script will override this. Unless they are present and failed, the revision should have been properly rollbacked."
+			echo -e "${ERR_PREF}The revision failed, aborting. The revision is automatically wrapped in a transaction when ran, but explicit use of transaction blocks within the revision script will override this. Unless they are present and failed, the revision should have been properly rollbacked."
 			exit 9;
 		fi
 		$PSQL -U $DB_USER $DB -c "INSERT INTO schema_revision (revision) VALUES ($next_revision)"
@@ -167,20 +166,20 @@ fi
 # final words of wisdom
 if [ $(($next_revision - 1)) -eq "$current_revision" ]; then
 	if [ -z "$found_baseline" ]; then
-		echo "No updates found."
+		-e echo "\nNo updates found."
 	fi
 	echo "At revision $current_revision"
 else 
 	at_revision=$(($next_revision - 1))
 	if [ "$LISTONLY" ]; then
-		echo "\nWould have upgraded from revision $current_revision to $at_revision\n";
+		echo -e "\nWould have upgraded from revision $current_revision to $at_revision\n";
 	else
-		echo "\nUpgraded from revision $current_revision to $at_revision\n";
+		echo -e "\nUpgraded from revision $current_revision to $at_revision\n";
 	fi 
 fi
 
 if [ "$found_baseline" ]; then
-	echo "Revision $next_revision is a new baseline. It should be applied cleanly by dropping the database (do dump the data first if this is the production environment...).";
+	echo -e "\nRevision $next_revision is a new baseline. It should be applied cleanly by dropping the database (do dump the data first if this is the production environment...).";
 fi
 	
 exit
