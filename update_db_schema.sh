@@ -30,7 +30,12 @@
 
 
 PSQL="/usr/bin/psql"
-SQL_REVISION_PATH="./sql"
+PWD="/bin/pwd"
+
+# get path relative to absolute location, needed to run this from anywhere
+SCRIPT_PATH_NAME=$(cd ${0%/*} && echo $PWD/${0##*/})
+SCRIPT_PATH=`dirname "$SCRIPT_PATH_NAME"`
+SQL_REVISION_PATH="${SCRIPT_PATH}/sql"
 
 # ---------- YOU SHOULD NOT NEED TO EDIT BELOW THIS LINE --------------
 
@@ -166,7 +171,7 @@ fi
 # final words of wisdom
 if [ $(($next_revision - 1)) -eq "$current_revision" ]; then
 	if [ -z "$found_baseline" ]; then
-		-e echo "\nNo updates found."
+		echo -e "\nNo updates found."
 	fi
 	echo "At revision $current_revision"
 else 
