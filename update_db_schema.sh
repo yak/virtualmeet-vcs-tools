@@ -33,7 +33,7 @@ PSQL="/usr/bin/psql"
 PWD="/bin/pwd"
 
 # get path relative to absolute location, needed to run this from anywhere
-SCRIPT_PATH_NAME=$(cd ${0%/*} && echo $PWD/${0##*/})
+SCRIPT_PATH_NAME=$(cd ${0%/*} 2>/dev/null && echo $PWD/${0##*/})
 SCRIPT_PATH=`dirname "$SCRIPT_PATH_NAME"`
 SQL_REVISION_PATH="${SCRIPT_PATH}/sql"
 
@@ -44,6 +44,8 @@ ERR_PREF="\n**** ERROR **** "
 # get db and db user from the command line
 while [ "$1" != "" ]; do
 	case $1 in
+		-i | --import-latest-baseline)	BASELINE=1
+						;;
 		-d | --database)	shift
 					DB=$1
 					;;
@@ -72,16 +74,51 @@ while [ "$1" != "" ]; do
 					exit
 					;;
 		*)
-					echo "${ERR_PREF}Unknown flag $1. Try $0 --help"
+					echo -e "${ERR_PREF}Unknown flag $1. Try $0 --help"
 					exit 9
 					;;
 	esac
 	shift
 done
 
-if [ -z "$DB" ] || [ -z "$DB_USER" ];
-then
-	echo "${ERR_PREF}Please pass both a database (--database) and database user (--user) to run this script"
+psql_verbose=''
+if [ "$VERBOSE" ]; then
+	psql_verbose='--echo-queries'
+fi
+
+if [ -z "$DB" ] || [ -z "$DB_USER" ]; then
+        echo -e "${ERR_PREF}Please pass both a database (--database) and database user (--user) to run this script"
+	exit 9;
+fi
+
+if [ "$BASELINE" ]; then
+	# use basename to take any path out of the sort, pipe any error messages about nothing being found to /dev/null
+	LATEST_BASELINE=`ls -t ${SQL_REVISION_PATH}/*_baseline.sql 2>/dev/null | xargs -n1 basename 2>/dev/null | /usr/bin/sort -ng | tail -n1`
+
+	if [ -z "$LATEST_BASELINE" ]; then
+		echo -e "${ERR_PREF}No baseline found in ${SQL_REVISION_PATH}";
+		exit 9;
+	fi
+
+	# check that we don't have the database already
+	EXISTING_DB_NAME=`$PSQL -U postgres --list | cut -f2 -d ' ' | grep -i $DB | tr "[:upper:]" "[:lower:]" 2>/dev/null`
+	LC_DB_NAME=`echo $DB | tr "[:upper:]" "[:lower:]" 2>/dev/null` 
+
+	if [ "$EXISTING_DB_NAME" = "$LC_DB_NAME" ]; then
+		echo -e "${ERR_PREF}The database $CREATE_DB_NAME already exists. You need to drop it manually first (DO save any data you need to migrate first!)";
+		exit 9
+	fi
+
+	current_revision=`echo "$LATEST_BASELINE" | grep -o '^[0-9]*'`
+
+	$PSQL -U postgres $psql_verbose < ${SQL_REVISION_PATH}/${LATEST_BASELINE}
+	$PSQL -U $DB_USER $DB -c "INSERT INTO schema_revision (revision) VALUES ($current_revision)"
+	echo -e "DONE! Imported baseline ${SQL_REVISION_PATH}/${LATEST_BASELINE}"
+	exit 1
+fi
+
+if [ -z "$DB" ] || [ -z "$DB_USER" ]; then
+	echo -e "${ERR_PREF}Please pass both a database (--database) and database user (--user) to run this script"
 	exit 9;
 fi
 
