@@ -93,13 +93,13 @@ fi
 
 if [ "$BASELINE" ]; then
 	# use basename to take any path out of the sort, pipe any error messages about nothing being found to /dev/null
-	LATEST_BASELINE=`ls -t ${SQL_REVISION_PATH}/*_baseline.sql 2>/dev/null | xargs -n1 basename 2>/dev/null | /usr/bin/sort -ng | tail -n1`
+	LATEST_BASELINE=`ls -t ${SQL_REVISION_PATH}/*_baseline.sql 2>/dev/null | xargs -n1 basename 2>/dev/null | /usr/bin/sort -n | tail -n1`
 
 	if [ -z "$LATEST_BASELINE" ]; then
 		echo -e "${ERR_PREF}No baseline found in ${SQL_REVISION_PATH}";
 		exit 9;
 	fi
-
+	
 	# check that we don't have the database already
 	EXISTING_DB_NAME=`$PSQL -U postgres --list | cut -f2 -d ' ' | grep -i $DB | tr "[:upper:]" "[:lower:]" 2>/dev/null`
 	LC_DB_NAME=`echo $DB | tr "[:upper:]" "[:lower:]" 2>/dev/null` 
