@@ -63,14 +63,19 @@ while [ "$1" != "" ]; do
 		-r | --revision)	shift
 					TO_REVISION=$1
 					;;
+		--drop)                 DROP=1
+					;;
 		-h | --help)
 					echo "\n$0\n"
 					echo "Required options"
 					echo " -d, --database:	database to connect to on localhost"
+					echo "\nDefault behavior is to update to latest revision, other options"
+					echo " -i, --import-latest-baseline: import the latest basline"
+					echo " --drop: drop the database (careful!)"
 					echo "\nOptional options:";
-					echo " -r, --revision:	don't upgrade beyond this revision"
-					echo " -l, --list-only:	only list which revisions would be applied"
-					echo " -v, --verbose:		list the actual SQL queries"
+					echo " -r, --revision: don't upgrade beyond this revision"
+					echo " -l, --list-only: only list which revisions would be applied"
+					echo " -v, --verbose: list the actual SQL queries"
 					echo "\n"
 					exit 0
 					;;
@@ -89,6 +94,11 @@ fi
 
 if [ -z "$DB" ]; then
         echo -e "${ERR_PREF}Please pass a database (--database | -d) to run this script"
+	exit 9;
+fi
+
+if [ "$BASELINE" ] && [ "$DROP" ]; then
+	echo -e "${ERR_PREF}Conflicting parameters --import-latest-baseline and --drop"
 	exit 9;
 fi
 
@@ -122,9 +132,10 @@ if [ "$BASELINE" ]; then
 	exit 0
 fi
 
-if [ -z "$DB" ] || [ -z "$DB_USER" ]; then
-	echo -e "${ERR_PREF}Please pass both a database (--database) and database user (--user) to run this script"
-	exit 9;
+if [ "$DROP" ]; then
+	$PSQL -U postgres $psql_verbose -c "DROP DATABASE $DB;"
+	echo -e "DONE! Dropped database $DB"
+	exit 0;
 fi
 
 if [ "$TO_REVISION" ]; then
