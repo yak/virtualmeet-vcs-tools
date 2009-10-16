@@ -32,6 +32,11 @@
 PSQL="/usr/bin/psql"
 PWD="/bin/pwd"
 
+# hardcoded user to simplify database dumping (a straight dump will
+# contain owner sets for the db user owning the tables), see earlier
+# revisions for a version that took the user as input.
+DB_USER="virtualmeet"
+
 # get path relative to absolute location, needed to run this from anywhere
 SCRIPT_PATH_NAME=$(cd ${0%/*} 2>/dev/null && echo $PWD/${0##*/})
 SCRIPT_PATH=`dirname "$SCRIPT_PATH_NAME"`
@@ -49,9 +54,6 @@ while [ "$1" != "" ]; do
 		-d | --database)	shift
 					DB=$1
 					;;
-		-u | --user)		shift
-					DB_USER=$1
-					;;
 		-l | --list-only)
 					LISTONLY=1
 					;;
@@ -65,13 +67,12 @@ while [ "$1" != "" ]; do
 					echo "\n$0\n"
 					echo "Required options"
 					echo " -d, --database:	database to connect to on localhost"
-					echo " -u, --user:		database user to connect with"
 					echo "\nOptional options:";
 					echo " -r, --revision:	don't upgrade beyond this revision"
 					echo " -l, --list-only:	only list which revisions would be applied"
 					echo " -v, --verbose:		list the actual SQL queries"
 					echo "\n"
-					exit
+					exit 0
 					;;
 		*)
 					echo -e "${ERR_PREF}Unknown flag $1. Try $0 --help"
@@ -86,8 +87,8 @@ if [ "$VERBOSE" ]; then
 	psql_verbose='--echo-queries'
 fi
 
-if [ -z "$DB" ] || [ -z "$DB_USER" ]; then
-        echo -e "${ERR_PREF}Please pass both a database (--database) and database user (--user) to run this script"
+if [ -z "$DB" ]; then
+        echo -e "${ERR_PREF}Please pass a database (--database | -d) to run this script"
 	exit 9;
 fi
 
@@ -105,16 +106,20 @@ if [ "$BASELINE" ]; then
 	LC_DB_NAME=`echo $DB | tr "[:upper:]" "[:lower:]" 2>/dev/null` 
 
 	if [ "$EXISTING_DB_NAME" = "$LC_DB_NAME" ]; then
-		echo -e "${ERR_PREF}The database $CREATE_DB_NAME already exists. You need to drop it manually first (DO save any data you need to migrate first!)";
+		echo -e "${ERR_PREF}The database $EXISTING_DB_NAME already exists. You need to drop it manually first (DO save any data you need to migrate first!)";
 		exit 9
 	fi
 
 	current_revision=`echo "$LATEST_BASELINE" | grep -o '^[0-9]*'`
 
-	$PSQL -U postgres $psql_verbose < ${SQL_REVISION_PATH}/${LATEST_BASELINE}
+	# create the database and assign it to the user
+	$PSQL -U postgres $psql_verbose -c "CREATE DATABASE $DB WITH TEMPLATE = template0 ENCODING = 'UTF8';"
+	$PSQL -U postgres $psql_verbose -c "ALTER DATABASE $DB OWNER TO $DB_USER;"
+
+	$PSQL -U $DB_USER $psql_verbose $DB < ${SQL_REVISION_PATH}/${LATEST_BASELINE}
 	$PSQL -U $DB_USER $DB -c "INSERT INTO schema_revision (revision) VALUES ($current_revision)"
 	echo -e "DONE! Imported baseline ${SQL_REVISION_PATH}/${LATEST_BASELINE}"
-	exit 1
+	exit 0
 fi
 
 if [ -z "$DB" ] || [ -z "$DB_USER" ]; then
@@ -166,7 +171,7 @@ fi
 
 if [ "$TO_REVISION" ] && [ "$TO_REVISION" -le "$current_revision" ]; then
 	echo -e "\nNothing to do. Asked to go no further than revision $TO_REVISION, currently at revision $current_revision.\n"
-	exit
+	exit 0
 fi
 
 # --- EVERYTHING SEEMS OK, LET'S ROCK! ---
@@ -224,4 +229,4 @@ if [ "$found_baseline" ]; then
 	echo -e "\nRevision $next_revision is a new baseline. It should be applied cleanly by dropping the database (do dump the data first if this is the production environment...).";
 fi
 	
-exit
+exit 0
