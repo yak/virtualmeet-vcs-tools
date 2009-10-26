@@ -76,8 +76,12 @@ the update stamp is naturally up to you):
   pg_dump -s -U DB_USER_HERE DB_NAME_HERE > VERSIONED_CONTROLLER_DIRECTORY_FOR_CHANGESETS_HERE/1_baseline.sql 
 
 
-3) Change the DB_USER below to match whatever user you are going to use (see
-the code for comments on this). This user should be created in the database.
+3) Create a config file with the DB_USER variable set (see config.example). The
+script will connect to the database with this user for any database operation.
+(usually you will want to use the same user as the one owning the table). This
+user must already exist in the database.
+
+  DB_USER=your-db-user-here
 
 
 4) Create a fresh database based on your first baseline (the -i flag tells the
