@@ -62,34 +62,35 @@ Requirements:
 First set up
 -------------
 
-1. Add the table that keeps track of which revision the database is at to the
-database you want to baseline against (the use of timestamp with time zone for
-the update stamp is naturally up to you):
+**Add the table that keeps track of which revision the database is at to the
+database you want to baseline against.** The use of timestamp with time zone
+for the update stamp is naturally up to you.
 
     CREATE TABLE schema_revision (revision integer NOT NULL, applied_stamp timestamp DEFAULT now());
 
 
-2. Now pg_dump the database schema into a file called 1_baseline.sql, eg.
+**Dump the database schema into a file called 1_baseline.sql.** This file
+should live in a suitable version controlled directory (duh).
 
     pg_dump -s -U DB_USER_HERE DB_NAME_HERE > VERSIONED_CONTROLLED_DIRECTORY_FOR_CHANGESETS_HERE/1_baseline.sql
 
 
-3. Create a config file with the DB_USER variable set (see config.example). The
-script will connect to the database with this user for any database operation.
-(usually you will want to use the same user as the one owning the table). This
-user must already exist in the database.
+**Create a config file (see config.example).** This defines the database user
+who owns the database tables and which the script will use for any database
+operations like applying changesets. This user must already exist in the
+database.
 
     DB_USER=your-db-user-here
 
- 
-4. Create a fresh database based on your first baseline (the -i flag tells the
-script to import the latest baseline):
+
+**Create a fresh database based on your baseline.** The -i flag tells the
+script to import the latest baseline.
 
     sh update_db_schema.sh -d DB_NAME_HERE -p VERSIONED_CONTROLLED_DIRECTORY_FOR_CHANGESETS_HERE/1_baseline.sql -i
 
 
-...DONE! If you log into DB_NAME_HERE and run a SELECT * FROM schema_revision;
-you should now see that the database is at revision 1. Repeat this step for any
+...DONE! If you log into DB_NAME_HERE and *SELECT * FROM schema_revision;* you
+should now see that the database is at revision 1. Repeat this step for any
 other database instances.
 
 
