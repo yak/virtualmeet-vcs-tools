@@ -86,7 +86,7 @@ database.
 **Create a fresh database based on your baseline.** The -i flag tells the
 script to import the latest baseline.
 
-    sh update_db_schema.sh -d DB_NAME_HERE -p VERSIONED_CONTROLLED_DIRECTORY_FOR_CHANGESETS_HERE/1_baseline.sql -i
+    sh update_db_schema.bash -d DB_NAME_HERE -p VERSIONED_CONTROLLED_DIRECTORY_FOR_CHANGESETS_HERE/1_baseline.sql -i
 
 
 ...DONE! If you log into DB_NAME_HERE and *SELECT * FROM schema_revision;* you
@@ -103,7 +103,7 @@ same directory as your baseline file and commit it. To update another database
 instance to the latest revision, pull/checkout the changeset from the version
 control repository and run:
 
-    ./update_db_schema.sh -p VERSIONED_CONTROLLED_DIRECTORY_FOR_CHANGESETS_HERE -d DB_NAME_HERE
+    ./update_db_schema.bash -p VERSIONED_CONTROLLED_DIRECTORY_FOR_CHANGESETS_HERE -d DB_NAME_HERE
 
 This will upgrade your database to version 2.
 
