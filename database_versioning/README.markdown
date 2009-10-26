@@ -71,7 +71,7 @@ the update stamp is naturally up to you):
 
 2. Now pg_dump the database schema into a file called 1_baseline.sql, eg.
 
-    pg_dump -s -U DB_USER_HERE DB_NAME_HERE > VERSIONED_CONTROLLER_DIRECTORY_FOR_CHANGESETS_HERE/1_baseline.sql
+    pg_dump -s -U DB_USER_HERE DB_NAME_HERE > VERSIONED_CONTROLLED_DIRECTORY_FOR_CHANGESETS_HERE/1_baseline.sql
 
 
 3. Create a config file with the DB_USER variable set (see config.example). The
@@ -85,7 +85,7 @@ user must already exist in the database.
 4. Create a fresh database based on your first baseline (the -i flag tells the
 script to import the latest baseline):
 
-    sh update_db_schema.sh -d DB_NAME_HERE -p VERSIONED_CONTROLLER_DIRECTORY_FOR_CHANGESETS_HERE/1_baseline.sql -i
+    sh update_db_schema.sh -d DB_NAME_HERE -p VERSIONED_CONTROLLED_DIRECTORY_FOR_CHANGESETS_HERE/1_baseline.sql -i
 
 
 ...DONE! If you log into DB_NAME_HERE and run a SELECT * FROM schema_revision;
@@ -102,7 +102,7 @@ same directory as your baseline file and commit it. To update another database
 instance to the latest revision, pull/checkout the changeset from the version
 control repository and run:
 
-    ./update_db_schema.sh -p VERSIONED_CONTROLLER_DIRECTORY_FOR_CHANGESETS_HERE -d DB_NAME_HERE
+    ./update_db_schema.sh -p VERSIONED_CONTROLLED_DIRECTORY_FOR_CHANGESETS_HERE -d DB_NAME_HERE
 
 This will upgrade your database to version 2.
 
