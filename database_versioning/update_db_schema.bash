@@ -67,12 +67,12 @@ if [ "$VERBOSE" ]; then
 fi
 
 if [ -z "$DB" ]; then
-        echo -e "${ERR_PREF}Please pass a database (--database | -d) to run this script"
+        echo -e "${ERR_PREF}Please pass a database (--database, -d) to run this script"
 	exit 9
 fi
 
 if [ -z "$SQL_REVISION_PATH" ]; then
-	echo -e "${ERR_PREF}Please pass the full path to the directory holding the changesets (--changeset-path || -p)"
+	echo -e "${ERR_PREF}Please pass the full path to the directory holding the changesets (--changeset-path, -p)"
 	exit 9
 fi
 
