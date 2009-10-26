@@ -1,14 +1,11 @@
-#!/bin/bash
-
-###############################################################################
+#!/usr/bin/env bash
+#
 # Virtualmeet VCS tools: DATABASE SCHEMA REVISION UPDATE SCRIPT
 #
 # See README for usage instructions and ../LICENSE for the Virtualmeet VCS
 # tools license.
 #
 # Copyright (c) 2008-2009 Kristoffer Lindqvist <kris@tsampa.org>
-#
-###############################################################################
 
 
 PSQL="/usr/bin/psql"
