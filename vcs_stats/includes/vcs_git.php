@@ -173,12 +173,12 @@ class VCS_Git {
 
 
 	/**
-	 * Get the HEAD commit, eg. the most recent commit in the active branch
+	 * Get the HEAD commit, eg. the most recent change commit in the active branch
 	 *
 	 * @return    Commit
 	 */
 	public function get_head_commit() {
-		$stdout = Shell::exec($this->git_cmd_prefix . ' log -n 1', $exit_code, $stderr);
+		$stdout = Shell::exec($this->git_cmd_prefix . ' log -n1 --no-merges ', $exit_code, $stderr);
 
 		if ($exit_code !== 0) {
 			throw new GitException("Could not get HEAD commit: $stderr");
@@ -188,13 +188,13 @@ class VCS_Git {
 	}
 
 	/**
-	 * Get the parent (first older) commit of a commit
+	 * Get the parent (first older) change commit of a commit
 	 *
 	 * @param    string   $commit_id: commit id to get the parent for
 	 * @return   Commit
 	 */
 	public function get_parent_of_commit($commit_id) {
-		$stdout = Shell::exec($this->git_cmd_prefix . ' log -n 1 ' . $commit_id . '^', $exit_code, $stderr);
+		$stdout = Shell::exec($this->git_cmd_prefix . ' log -n1 --no-merges ' . $commit_id . '^', $exit_code, $stderr);
 
 		if ($exit_code !== 0) {
 			throw new GitException("Could not get parent of commit $commit_id: $stderr");
@@ -206,12 +206,12 @@ class VCS_Git {
 
 
 	/**
-	 * Get the total number of commits in the currently active branch
+	 * Get the total number of change commits in the currently active branch
 	 *
 	 * @return   integer
 	 */
 	public function get_commit_count() {
-		$stdout = Shell::exec($this->git_cmd_prefix . ' log --oneline | ' . self::WC_BINARY . ' -l', $exit_code, $stderr);
+		$stdout = Shell::exec($this->git_cmd_prefix . ' log --oneline --no-merges | ' . self::WC_BINARY . ' -l', $exit_code, $stderr);
 
 		if ($exit_code !== 0 || !is_numeric($stdout)) {
 			throw new GitException("Could not get commit count: $stderr");
