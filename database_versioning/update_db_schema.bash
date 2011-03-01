@@ -123,7 +123,20 @@ if [ "$BASELINE" ]; then
 	$PSQL -U postgres $psql_verbose -c "CREATE DATABASE $DB WITH TEMPLATE = template0 ENCODING = 'UTF8';"
 	$PSQL -U postgres $psql_verbose -c "ALTER DATABASE $DB OWNER TO $DB_USER;"
 
+	# import the baseline
 	$PSQL -U $DB_USER $psql_verbose $DB < ${SQL_REVISION_PATH}/${LATEST_BASELINE}
+
+	# create the schema revision table if it does not exist. This allows for easy baselining as the current
+	# database schema can be dumped together with the schema_revision table.
+	has_schema_revision=`$PSQL -U $DB_USER $DB -c "SELECT tablename FROM pg_tables WHERE tablename = 'schema_revision';" | grep schema_revision`
+	if [ ! "$has_schema_revision" ]; then
+		echo -e "Creating the schema_revision table"
+		$PSQL -U $DB_USER $DB -c "CREATE TABLE schema_revision (revision integer NOT NULL PRIMARY KEY, applied_stamp timestamp without time zone DEFAULT now());"
+		$PSQL -U $DB_USER $DB -c "COMMENT ON TABLE schema_revision IS 'Log of applied DB schema revisions from change files in source control; allows only new change files to be applied';"
+	else
+		echo -e "schema_revision table already exists, not re-creating"
+	fi
+
 	$PSQL -U $DB_USER $DB -c "INSERT INTO schema_revision (revision) VALUES ($current_revision)"
 	echo -e "DONE! Imported baseline ${SQL_REVISION_PATH}/${LATEST_BASELINE}"
 	exit 0

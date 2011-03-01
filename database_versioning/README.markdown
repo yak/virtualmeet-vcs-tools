@@ -62,13 +62,6 @@ Requirements:
 First set up
 -------------
 
-**Add the table that keeps track of which revision the database is at to the
-database you want to baseline against.** The use of timestamp with time zone
-for the update stamp is naturally up to you.
-
-    CREATE TABLE schema_revision (revision integer NOT NULL, applied_stamp timestamp DEFAULT now());
-
-
 **Dump the database schema into a file called 1_baseline.sql.** This file
 should live in a suitable version controlled directory (duh).
 
