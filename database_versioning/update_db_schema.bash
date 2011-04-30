@@ -36,6 +36,8 @@ while [ "$1" != "" ]; do
 		-p | --changeset-path)	shift
 					SQL_REVISION_PATH=$1
 					;;
+		-u | --user-list)       USER_LIST=1
+					;;
 		--drop)                 DROP=1
 					;;
 		-h | --help)
@@ -47,6 +49,7 @@ while [ "$1" != "" ]; do
 					echo " -i, --import-latest-baseline: import the latest baseline"
 					echo " --drop: drop the database (careful!)"
 					echo -e "\nOptional options:"
+					echo " -u, --user-list: only list the user the database will be owned by (as set in config) and exit immediately"
 					echo " -r, --revision: don't upgrade beyond this revision"
 					echo " -l, --list-only: only list which revisions would be applied (does not apply to importing baselines)"
 					echo " -v, --verbose: list the actual SQL queries"
@@ -76,7 +79,6 @@ if [ -z "$SQL_REVISION_PATH" ]; then
 	exit 9
 fi
 
-
 # ---- configuration file -----
 config_file="${SQL_REVISION_PATH}/config"
 
@@ -91,7 +93,16 @@ if [ -z "$DB_USER" ]; then
 	echo -e "${ERR_PREF}DB_USER is not defined in ${config_file}"
 	exit 9
 fi  
-# ---- configuration file -----
+
+# Only want to get DB_USER name? If so, echo it out and exit regardless of
+# whatever other params may have been passed in.
+if [ "$USER_LIST" ]; then
+	echo "$DB_USER"
+	exit 0;
+fi
+
+
+# ---- /configuration file -----
 
 
 if [ "$BASELINE" ] && [ "$DROP" ]; then
