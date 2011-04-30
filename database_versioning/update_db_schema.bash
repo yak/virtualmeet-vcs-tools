@@ -5,7 +5,7 @@
 # See README for usage instructions and ../LICENSE for the Virtualmeet VCS
 # tools license.
 #
-# Copyright (c) 2008-2009 Kristoffer Lindqvist <kris@tsampa.org>
+# Copyright (c) 2008-2011 Kristoffer Lindqvist <kris@tsampa.org>
 
 
 PSQL="/usr/bin/psql"
@@ -44,7 +44,7 @@ while [ "$1" != "" ]; do
 					echo " -d, --database:	database to connect to on localhost"
 					echo " -p, --changeset-path: path to where the changeset files are"
 					echo -e "\nDefault behavior is to update to latest revision, other options"
-					echo " -i, --import-latest-baseline: import the latest basline"
+					echo " -i, --import-latest-baseline: import the latest baseline"
 					echo " --drop: drop the database (careful!)"
 					echo -e "\nOptional options:"
 					echo " -r, --revision: don't upgrade beyond this revision"
