@@ -126,9 +126,10 @@ updated. Such cases can usually be handled properly as long as you think ahead.
 **Do not use transactions in your changesets.** A transaction is automatically
 wrapped around each changeset.
 
-**Required extensions are only checked for presence; upgrading or downgrading
-them needs to be done manually. Removing an extension from the config will not
-cause it to be uninstalled from the database.
+**Required extensions are installed if missing, but there is no automatic
+upgrading, downgrading or uninstalling.** Upgrading or downgrading extensions
+needs to be done manually. Removing an extension from the config will not cause
+it to be uninstalled from the database.
 
 Creating a new baseline
 ------------------------
