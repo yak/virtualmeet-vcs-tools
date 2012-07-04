@@ -5,7 +5,7 @@
 # See README for usage instructions and ../LICENSE for the Virtualmeet VCS
 # tools license.
 #
-# Copyright (c) 2008-2011 Kristoffer Lindqvist <kris@tsampa.org>
+# Copyright (c) 2008-2012 Kristoffer Lindqvist <kris@tsampa.org>
 
 
 PSQL="/usr/bin/psql"
@@ -18,7 +18,7 @@ ERR_PREF="\n**** ERROR **** "
 # get db and db user from the command line
 while [ "$1" != "" ]; do
 	case $1 in
-		-i | --import-latest-baseline)	
+		-i | --import-latest-baseline)
 					BASELINE=1
 					;;
 		-d | --database)	shift
@@ -92,7 +92,7 @@ fi
 if [ -z "$DB_USER" ]; then
 	echo -e "${ERR_PREF}DB_USER is not defined in ${config_file}"
 	exit 9
-fi  
+fi
 
 # Only want to get DB_USER name? If so, echo it out and exit regardless of
 # whatever other params may have been passed in.
@@ -101,6 +101,11 @@ if [ "$USER_LIST" ]; then
 	exit 0;
 fi
 
+db_ext_is_array=`declare -p DB_EXTENSIONS | grep -q '^declare \-a' || echo 0`
+if [ "$db_ext_is_array" = "0" ]; then
+	echo -e "${ERR_PREF}DB_EXTENSIONS is defined in ${config_file} or is not a Bash array: $DB_EXTENSIONS. Please declare it as DB_EXTENSIONS=(ext1 ext2) or DB_EXTENSIONS=() if no required extensions."
+	exit 9;
+fi
 
 # ---- /configuration file -----
 
@@ -118,10 +123,10 @@ if [ "$BASELINE" ]; then
 		echo -e "${ERR_PREF}No baseline found in ${SQL_REVISION_PATH}"
 		exit 9
 	fi
-	
+
 	# check that we don't have the database already
 	EXISTING_DB_NAME=`$PSQL -U postgres --list | cut -f2 -d ' ' | grep -i $DB | tr "[:upper:]" "[:lower:]" 2>/dev/null`
-	LC_DB_NAME=`echo $DB | tr "[:upper:]" "[:lower:]" 2>/dev/null` 
+	LC_DB_NAME=`echo $DB | tr "[:upper:]" "[:lower:]" 2>/dev/null`
 
 	if [ "$EXISTING_DB_NAME" = "$LC_DB_NAME" ]; then
 		echo -e "${ERR_PREF}The database $EXISTING_DB_NAME already exists. You need to drop it manually first (DO save any data you need to migrate first!)"
@@ -161,7 +166,7 @@ fi
 
 if [ "$TO_REVISION" ]; then
 	TO_REVISION=`echo $TO_REVISION | grep -v [^0-9]`
-	
+
 	if [ -z "$TO_REVISION" ]; then
 		echo -e "${ERR_PREF}Non-numeric revision number passed."
 		exit 9
@@ -169,7 +174,7 @@ if [ "$TO_REVISION" ]; then
 fi
 
 # check that we have the db and db user set up properly
-set `$PSQL -U $DB_USER -l | grep -v FATAL | grep $DB` 
+set `$PSQL -U $DB_USER -l | grep -v FATAL | grep $DB`
 if [ -z "$1" ]; then
 	clear  # hide the mess psql spits out in this scenario
 	echo -e "${ERR_PREF}Could not connect to db $DB with user $DB_USER using $PSQL. Is your database properly configured and running?"
@@ -177,7 +182,7 @@ if [ -z "$1" ]; then
 fi
 
 # try to fetch the current schema version from the target db (note, -- is required to escape the -c ticks correctly)
-set -- `$PSQL -t -U $DB_USER $DB -c 'SELECT revision FROM schema_revision ORDER BY revision DESC limit 1;'` 
+set -- `$PSQL -t -U $DB_USER $DB -c 'SELECT revision FROM schema_revision ORDER BY revision DESC limit 1;'`
 current_revision=$1;
 
 if [ -z "$current_revision" ]; then
@@ -212,13 +217,54 @@ if [ "$VERBOSE" ]; then
 	psql_verbose='--echo-queries'
 fi
 
+if [ "$DB_EXTENSIONS" ]; then
+	HAS_EXTENSION_ERRORS=0
+	EXT_INSTALLED_REGEX='^[0-9\.]+$'
+	for ext in "${DB_EXTENSIONS[@]}"; do
+		ext_cmd="$PSQL -U postgres $DB -c \"SELECT installed_version FROM pg_available_extensions WHERE name = '$ext';\"|head -n 3|tail -n 1|sed 's/^[[:space:]]*\(.*\)[[:space:]]*$/\1/'"
+		ext_avail=`eval $ext_cmd`
+		if [[ $ext_avail =~ '0 rows' ]]; then
+			echo -e "\n${ERR_PREF}Database extension $ext has been specified as required, but it is not available for installation."
+			HAS_EXTENSION_ERRORS=1
+			continue
+		fi
+
+		if [[ ! $ext_avail =~ $EXT_INSTALLED_REGEX ]]; then
+			echo -e "\nRequired extension $ext is available but not installed. "
+			if [ "$LISTONLY" ]; then
+				echo -e "\ ...would have installed it."
+				continue
+			fi
+			$PSQL -U postgres $DB -c "CREATE EXTENSION $ext;"
+			ext_avail=`eval $ext_cmd`
+		fi
+		# TODO we could do a version check here and say whether the installed version is the same as the available version,
+		#      should we even have a flag to offer auto-updating?
+
+		if [[ $ext_avail =~ $EXT_INSTALLED_REGEX ]]; then
+			echo -e "\nRequired extension $ext is installed at version $ext_avail."
+		else
+			echo -e "\n${ERR_PREF}Failed to install required extension $ext."
+			HAS_EXTENSION_ERRORS=1
+		fi
+	done
+
+	if [ "$HAS_EXTENSION_ERRORS" != "0" ]; then
+		if [ "$LISTONLY" ]; then
+			echo -e "\n...would have terminated here due to extension errors. Proceeding since in list mode.";
+		else
+			exit 9
+		fi
+	fi
+fi
+
 next_revision=$(($current_revision + 1))
 
 while [ -e ${SQL_REVISION_PATH}/${next_revision}_rev.sql ]
 do
 	if [ "$TO_REVISION" ] && [ "$next_revision" -gt "$TO_REVISION" ]; then
 		break
-	fi	
+	fi
 
 	if [ "$LISTONLY" ]; then
 		echo -e "\n...would apply revision $next_revision"
@@ -239,7 +285,7 @@ done
 
 # see if we ran into a new baseline!
 if [ -e ${SQL_REVISION_PATH}/${next_revision}_baseline.sql ]; then
-	found_baseline=1	
+	found_baseline=1
 fi
 
 # final words of wisdom
@@ -248,18 +294,18 @@ if [ $(($next_revision - 1)) -eq "$current_revision" ]; then
 		echo -e "\nNo updates found."
 	fi
 	echo "At revision $current_revision"
-else 
+else
 	at_revision=$(($next_revision - 1))
 	if [ "$LISTONLY" ]; then
 		echo -e "\nWould have upgraded from revision $current_revision to $at_revision\n"
 	else
 		echo -e "\nUpgraded from revision $current_revision to $at_revision\n"
-	fi 
+	fi
 fi
 
 if [ "$found_baseline" ]; then
 	echo -e "\nRevision $next_revision is a new baseline. It should be applied cleanly by dropping the database (do dump the data first if this is the production environment...)."
 fi
-	
+
 exit 0
 

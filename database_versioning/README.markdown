@@ -71,10 +71,13 @@ should live in a suitable version controlled directory (duh).
 **Create a config file (see config.example).** This defines the database user
 who owns the database tables and which the script will use for any database
 operations like applying changesets. This user must already exist in the
-database.
+database. Required database extensions can also be specified (Postgres 9.1+).
+The presence of these extensions is checked on every run and installation into
+the database is attempted if the extension is missing (if this fails, the
+script will terminate).
 
     DB_USER=your-db-user-here
-
+    DB_EXTENSIONS=(required_extension1 required_extensions2)
 
 **Create a fresh database based on your baseline.** The -i flag tells the
 script to import the latest baseline.
@@ -123,6 +126,9 @@ updated. Such cases can usually be handled properly as long as you think ahead.
 **Do not use transactions in your changesets.** A transaction is automatically
 wrapped around each changeset.
 
+**Required extensions are only checked for presence; upgrading or downgrading
+them needs to be done manually. Removing an extension from the config will not
+cause it to be uninstalled from the database.
 
 Creating a new baseline
 ------------------------
