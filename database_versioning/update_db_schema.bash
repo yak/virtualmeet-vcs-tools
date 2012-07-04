@@ -115,6 +115,12 @@ if [ "$BASELINE" ] && [ "$DROP" ]; then
 	exit 9
 fi
 
+if [ "$DROP" ]; then
+  $PSQL -U postgres $psql_verbose -c "DROP DATABASE $DB;"
+  echo -e "DONE! Dropped database $DB"
+  exit 0
+fi
+
 if [ "$BASELINE" ]; then
 	# use basename to take any path out of the sort, pipe any error messages about nothing being found to /dev/null
 	LATEST_BASELINE=`ls -t ${SQL_REVISION_PATH}/*_baseline.sql 2>/dev/null | xargs -n1 basename 2>/dev/null | /usr/bin/sort -n | tail -n1`
@@ -138,83 +144,13 @@ if [ "$BASELINE" ]; then
 	# create the database and assign it to the user
 	$PSQL -U postgres $psql_verbose -c "CREATE DATABASE $DB WITH TEMPLATE = template0 ENCODING = 'UTF8';"
 	$PSQL -U postgres $psql_verbose -c "ALTER DATABASE $DB OWNER TO $DB_USER;"
-
-	# import the baseline
-	$PSQL -U $DB_USER $psql_verbose $DB < ${SQL_REVISION_PATH}/${LATEST_BASELINE}
-
-	# create the schema revision table if it does not exist. This allows for easy baselining as the current
-	# database schema can be dumped together with the schema_revision table.
-	has_schema_revision=`$PSQL -U $DB_USER $DB -c "SELECT tablename FROM pg_tables WHERE tablename = 'schema_revision';" | grep schema_revision`
-	if [ ! "$has_schema_revision" ]; then
-		echo -e "Creating the schema_revision table"
-		$PSQL -U $DB_USER $DB -c "CREATE TABLE schema_revision (revision integer NOT NULL PRIMARY KEY, applied_stamp timestamp without time zone DEFAULT now());"
-		$PSQL -U $DB_USER $DB -c "COMMENT ON TABLE schema_revision IS 'Log of applied DB schema revisions from change files in source control; allows only new change files to be applied';"
-	else
-		echo -e "schema_revision table already exists, not re-creating"
-	fi
-
-	$PSQL -U $DB_USER $DB -c "INSERT INTO schema_revision (revision) VALUES ($current_revision)"
-	echo -e "DONE! Imported baseline ${SQL_REVISION_PATH}/${LATEST_BASELINE}"
-	exit 0
-fi
-
-if [ "$DROP" ]; then
-	$PSQL -U postgres $psql_verbose -c "DROP DATABASE $DB;"
-	echo -e "DONE! Dropped database $DB"
-	exit 0
-fi
-
-if [ "$TO_REVISION" ]; then
-	TO_REVISION=`echo $TO_REVISION | grep -v [^0-9]`
-
-	if [ -z "$TO_REVISION" ]; then
-		echo -e "${ERR_PREF}Non-numeric revision number passed."
-		exit 9
-	fi
 fi
 
 # check that we have the db and db user set up properly
 set `$PSQL -U $DB_USER -l | grep -v FATAL | grep $DB`
 if [ -z "$1" ]; then
-	clear  # hide the mess psql spits out in this scenario
 	echo -e "${ERR_PREF}Could not connect to db $DB with user $DB_USER using $PSQL. Is your database properly configured and running?"
 	exit 9
-fi
-
-# try to fetch the current schema version from the target db (note, -- is required to escape the -c ticks correctly)
-set -- `$PSQL -t -U $DB_USER $DB -c 'SELECT revision FROM schema_revision ORDER BY revision DESC limit 1;'`
-current_revision=$1;
-
-if [ -z "$current_revision" ]; then
-	echo -e "${ERR_PREF}No revision number found in the $DB database. You probably need to import the latest baseline."
-	exit 9
-fi
-
-current_revision=`echo $current_revision | grep -v [^0-9]`
-if [ -z "$current_revision" ]; then
-	echo -e "${ERR_PREF}Non-numeric revision number found in the $DB database. Something is very wrong here."
-	exit 9
-fi
-
-if [ ! -e $SQL_REVISION_PATH ]; then
-	echo -e "${ERR_PREF}The SQL revision path $SQL_REVISION_PATH does not exist."
-	exit 9
-fi
-
-if [ $(ls -1A $SQL_REVISION_PATH | wc -l) -eq 0 ]; then
-	echo -e "${ERR_PREF}The SQL revision path $SQL_REVISION_PATH is empty. Have you correctly checked out the project?"
-	exit 9
-fi
-
-if [ "$TO_REVISION" ] && [ "$TO_REVISION" -le "$current_revision" ]; then
-	echo -e "\nNothing to do. Asked to go no further than revision $TO_REVISION, currently at revision $current_revision.\n"
-	exit 0
-fi
-
-# --- EVERYTHING SEEMS OK, LET'S ROCK! ---
-psql_verbose=''
-if [ "$VERBOSE" ]; then
-	psql_verbose='--echo-queries'
 fi
 
 if [ "$DB_EXTENSIONS" ]; then
@@ -256,6 +192,71 @@ if [ "$DB_EXTENSIONS" ]; then
 			exit 9
 		fi
 	fi
+fi
+
+if [ "$BASELINE" ]; then
+	# import the baseline
+	$PSQL -U $DB_USER $psql_verbose $DB < ${SQL_REVISION_PATH}/${LATEST_BASELINE}
+
+	# create the schema revision table if it does not exist. This allows for easy baselining as the current
+	# database schema can be dumped together with the schema_revision table.
+	has_schema_revision=`$PSQL -U $DB_USER $DB -c "SELECT tablename FROM pg_tables WHERE tablename = 'schema_revision';" | grep schema_revision`
+	if [ ! "$has_schema_revision" ]; then
+		echo -e "Creating the schema_revision table"
+		$PSQL -U $DB_USER $DB -c "CREATE TABLE schema_revision (revision integer NOT NULL PRIMARY KEY, applied_stamp timestamp without time zone DEFAULT now());"
+		$PSQL -U $DB_USER $DB -c "COMMENT ON TABLE schema_revision IS 'Log of applied DB schema revisions from change files in source control; allows only new change files to be applied';"
+	else
+		echo -e "schema_revision table already exists, not re-creating"
+	fi
+
+	$PSQL -U $DB_USER $DB -c "INSERT INTO schema_revision (revision) VALUES ($current_revision)"
+	echo -e "DONE! Imported baseline ${SQL_REVISION_PATH}/${LATEST_BASELINE}"
+	exit 0
+fi
+
+if [ "$TO_REVISION" ]; then
+	TO_REVISION=`echo $TO_REVISION | grep -v [^0-9]`
+
+	if [ -z "$TO_REVISION" ]; then
+		echo -e "${ERR_PREF}Non-numeric revision number passed."
+		exit 9
+	fi
+fi
+
+# try to fetch the current schema version from the target db (note, -- is required to escape the -c ticks correctly)
+set -- `$PSQL -t -U $DB_USER $DB -c 'SELECT revision FROM schema_revision ORDER BY revision DESC limit 1;'`
+current_revision=$1;
+
+if [ -z "$current_revision" ]; then
+	echo -e "${ERR_PREF}No revision number found in the $DB database. You probably need to import the latest baseline."
+	exit 9
+fi
+
+current_revision=`echo $current_revision | grep -v [^0-9]`
+if [ -z "$current_revision" ]; then
+	echo -e "${ERR_PREF}Non-numeric revision number found in the $DB database. Something is very wrong here."
+	exit 9
+fi
+
+if [ ! -e $SQL_REVISION_PATH ]; then
+	echo -e "${ERR_PREF}The SQL revision path $SQL_REVISION_PATH does not exist."
+	exit 9
+fi
+
+if [ $(ls -1A $SQL_REVISION_PATH | wc -l) -eq 0 ]; then
+	echo -e "${ERR_PREF}The SQL revision path $SQL_REVISION_PATH is empty. Have you correctly checked out the project?"
+	exit 9
+fi
+
+if [ "$TO_REVISION" ] && [ "$TO_REVISION" -le "$current_revision" ]; then
+	echo -e "\nNothing to do. Asked to go no further than revision $TO_REVISION, currently at revision $current_revision.\n"
+	exit 0
+fi
+
+# --- EVERYTHING SEEMS OK, LET'S ROCK! ---
+psql_verbose=''
+if [ "$VERBOSE" ]; then
+	psql_verbose='--echo-queries'
 fi
 
 next_revision=$(($current_revision + 1))
