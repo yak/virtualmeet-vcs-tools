@@ -1,4 +1,0 @@
-# Example configuration file, save as config in the same directory as your changesets
-
-DB_USER=virtualmeet
-DB_EXTENSIONS=()

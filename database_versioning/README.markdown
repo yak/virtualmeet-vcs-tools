@@ -53,9 +53,9 @@ Requirements:
 * 	**Linux and a BASH shell** (has not been tested nor designed for any other
 	environment, feedback/patches warmly welcome)
 
-* 	a recently fresh copy of **PostgreSQL** (any 8.x line at least probably ok)
+* 	a recently fresh copy of **PostgreSQL** (any version beyond 8.x)
 
-* 	**a Version Control System of your choice** (Git/Subversion/CVS...). Strictly
+* 	**a Version Control System of your choice** (Git, Subversion...). Strictly
 	speaking optional, but this script makes little sense for use without one.
 
 
@@ -68,21 +68,10 @@ should live in a suitable version controlled directory (duh).
     pg_dump -s -U DB_USER_HERE DB_NAME_HERE > VERSIONED_CONTROLLED_DIRECTORY_FOR_CHANGESETS_HERE/1_baseline.sql
 
 
-**Create a config file (see config.example).** This defines the database user
-who owns the database tables and which the script will use for any database
-operations like applying changesets. This user must already exist in the
-database. Required database extensions can also be specified (Postgres 9.1+).
-The presence of these extensions is checked on every run and installation into
-the database is attempted if the extension is missing (if this fails, the
-script will terminate).
-
-    DB_USER=your-db-user-here
-    DB_EXTENSIONS=(required_extension1 required_extensions2)
-
 **Create a fresh database based on your baseline.** The -i flag tells the
 script to import the latest baseline.
 
-    sh update_db_schema.bash -d DB_NAME_HERE -p VERSIONED_CONTROLLED_DIRECTORY_FOR_CHANGESETS_HERE/1_baseline.sql -i
+    sh update_db_schema.bash -U DB_USER_HERE -d DB_NAME_HERE -p VERSIONED_CONTROLLED_DIRECTORY_FOR_CHANGESETS_HERE/1_baseline.sql -i
 
 
 ...DONE! If you log into DB_NAME_HERE and *SELECT * FROM schema_revision;* you
@@ -99,7 +88,7 @@ same directory as your baseline file and commit it. To update another database
 instance to the latest revision, pull/checkout the changeset from the version
 control repository and run:
 
-    ./update_db_schema.bash -p VERSIONED_CONTROLLED_DIRECTORY_FOR_CHANGESETS_HERE -d DB_NAME_HERE
+    ./update_db_schema.bash -p VERSIONED_CONTROLLED_DIRECTORY_FOR_CHANGESETS_HERE -U DB_USER_HERE -d DB_NAME_HERE
 
 This will upgrade your database to version 2.
 
@@ -128,8 +117,7 @@ wrapped around each changeset.
 
 **Required extensions are installed if missing, but there is no automatic
 upgrading, downgrading or uninstalling.** Upgrading or downgrading extensions
-needs to be done manually. Removing an extension from the config will not cause
-it to be uninstalled from the database.
+needs to be done manually.
 
 Creating a new baseline
 ------------------------
