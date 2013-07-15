@@ -224,7 +224,7 @@ if [ "$BASELINE" ]; then
 
 	# create the schema revision table if it does not exist. This allows for easy baselining as the current
 	# database schema can be dumped together with the schema_revision table.
-	has_schema_revision=`$conn_str -c "SELECT tablename FROM pg_tables WHERE tablename = 'schema_revision';" | grep schema_revision`
+	has_schema_revision=`$conn_str $DB -c "SELECT tablename FROM pg_tables WHERE tablename = 'schema_revision';" | grep schema_revision`
 	if [ ! "$has_schema_revision" ]; then
 		echo -e "Creating the schema_revision table"
 		echo "CREATE TABLE schema_revision (revision integer NOT NULL PRIMARY KEY, applied_stamp timestamp without time zone DEFAULT now());" | eval "$CHANGESET_PIPE" | $PSQL -U $DB_USER $DB
